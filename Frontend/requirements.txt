@@ -1,0 +1,9 @@
+Flask
+Flask-WTF
+Flask-Bcrypt
+Flask-Login
+email-validator
+mysql-connector-python
+gunicorn
+Werkzeug
+requests

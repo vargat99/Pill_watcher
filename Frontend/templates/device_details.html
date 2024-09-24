@@ -1,0 +1,227 @@
+<!-- templates/device_details.html -->
+{% extends "base.html" %}
+
+{% block title %}Device Details{% endblock %}
+
+{% block content %}
+    <h1><strong>You are currently viewing:</strong> {{ device.shown_name }}</h1>
+    {% if current_user.role == "admin" %}
+        <h3>Device Details</h3>
+        <p><strong>Device ID:</strong> {{ device.id }}</p>
+        <p><strong>Device Hostname:</strong> {{ device.hostname }}</p>
+        <p><strong>Device Sofwaver Version:</strong> {{ device.software_version }}</p>
+    {% endif %}
+
+    <h3>Current image</h3>
+    <div id="device-data">
+        <p><strong>Timestamp:</strong> <span id="timestamp"></span></p>
+        <p><strong>Encoder Position:</strong> <span id="encoder_position"></span></p>
+        <img id="device_image" src="" alt="Device Image" style="max-width: 100%; display: block;">
+        <div class="mt-2">
+            <button id="prev_image" class="btn btn-secondary">Previous</button>
+            <button id="next_image" class="btn btn-secondary">Next</button>
+        </div>
+    </div>
+
+    <h3>Update Device Name</h3>
+    <form id="update-name-form">
+        <div class="form-row align-items-center mb-3">
+            <div class="col-auto">
+                <label for="new_device_name" class="col-form-label">New Device Name:</label>
+            </div>
+            <div class="col-auto">
+                <input type="text" class="form-control" id="new_device_name">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Update Name</button>
+            </div>
+        </div>
+    </form>
+
+    <h3>Device Settings</h3>
+    <form id="device-settings-form">
+        <div class="form-row align-items-center mb-3">
+            <div class="col-auto">
+                <label for="morning_time" class="col-form-label">Morning time:</label>
+            </div>
+            <div class="col-auto">
+                <select id="morning_time" class="form-control">
+                    {% for hour in range(24) %}
+                        <option value="{{ hour }}">{{ hour }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row align-items-center mb-3">
+            <div class="col-auto">
+                <label for="noon_time" class="col-form-label">Noon time:</label>
+            </div>
+            <div class="col-auto">
+                <select id="noon_time" class="form-control">
+                    {% for hour in range(24) %}
+                        <option value="{{ hour }}">{{ hour }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row align-items-center mb-3">
+            <div class="col-auto">
+                <label for="evening_time" class="col-form-label">Evening time:</label>
+            </div>
+            <div class="col-auto">
+                <select id="evening_time" class="form-control">
+                    {% for hour in range(24) %}
+                        <option value="{{ hour }}">{{ hour }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group form-check">
+            <input type="checkbox" class="form-check-input" id="use_flash">
+            <label class="form-check-label" for="use_flash">Use flash?</label>
+        </div>
+        <div class="form-row align-items-center mb-3">
+            <div class="col-auto">
+                <label for="picture_delay" class="col-form-label">Picture interval [seconds]:</label>
+            </div>
+            <div class="col-auto">
+                <input type="number" class="form-control" id="picture_delay" min="30" step="30">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+
+    <p><a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a></p>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+         $(document).ready(function() {
+            var deviceData = [];
+            var currentIndex = 0;
+
+            function updateDisplay(index) {
+                if (deviceData.length > 0 && index >= 0 && index < deviceData.length) {
+                    var data = deviceData[index];
+                    $('#timestamp').text(data.timestamp);
+                    $('#encoder_position').text(data.encoder_position);
+                    $('#device_image').attr('src', '/uploads/' + data.picture_name);
+                }
+            }
+
+            function fetchDeviceData() {
+                $.ajax({
+                    url: '{{ url_for('get_device_data', device_name=device.hostname) }}',
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            deviceData = response.data;
+                            updateDisplay(0); // Display the first picture and data initially
+                        } else {
+                            console.log('Failed to fetch data');
+                        }
+                    },
+                    error: function(error) {
+                        console.log('Error:', error);
+                    }
+                });
+            }
+
+            function fetchDeviceSettings() {
+                $.ajax({
+                    url: '{{ url_for('get_device_settings', device_name=device.hostname) }}',
+                    method: 'GET',
+                    success: function(data) {
+                        if (data.success) {
+                            $('#morning_time').val(data.morning_time);
+                            $('#noon_time').val(data.noon_time);
+                            $('#evening_time').val(data.evening_time);
+                            $('#use_flash').prop('checked', data.use_flash);
+                            $('#picture_delay').val(data.picture_delay);
+                        } else {
+                            console.log('Failed to fetch settings');
+                        }
+                    },
+                    error: function(error) {
+                        console.log('Error:', error);
+                    }
+                });
+            }
+
+
+            $('#prev_image').on('click', function() {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateDisplay(currentIndex);
+                }
+            });
+
+            $('#next_image').on('click', function() {
+                if (currentIndex < deviceData.length - 1) {
+                    currentIndex++;
+                    updateDisplay(currentIndex);
+                }
+            });
+
+
+            // Fetch device data and settings immediately and then every 30 seconds
+            fetchDeviceData();
+            fetchDeviceSettings();
+            setInterval(fetchDeviceData, 30000);
+
+            // Handle form submission
+            $('#device-settings-form').on('submit', function(event) {
+                event.preventDefault();
+                var settingsData = {
+                    morning_time: $('#morning_time').val(),
+                    noon_time: $('#noon_time').val(),
+                    evening_time: $('#evening_time').val(),
+                    use_flash: $('#use_flash').is(':checked'),
+                    picture_delay: $('#picture_delay').val()
+                };
+
+                $.ajax({
+                    url: '{{ url_for('update_device_settings', device_name=device.hostname) }}',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(settingsData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Settings saved successfully!');
+                        } else {
+                            alert('Failed to save settings.');
+                        }
+                    },
+                    error: function(error) {
+                        console.log('Error:', error);
+                        alert('An error occurred while saving settings.');
+                    }
+                });
+            });
+
+            // Handle name update form submission
+            $('#update-name-form').on('submit', function(event) {
+                event.preventDefault();
+                var newDeviceName = $('#new_device_name').val();
+
+                $.ajax({
+                    url: '{{ url_for('update_name', device_name=device.hostname) }}',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ new_name: newDeviceName }),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Device name updated successfully!');
+                            location.reload();  // Reload page to reflect the updated device name
+                        } else {
+                            alert('Failed to update device name.');
+                        }
+                    },
+                    error: function(error) {
+                        console.log('Error:', error);
+                        alert('An error occurred while updating the device name.');
+                    }
+                });
+            }); 
+        });
+    </script>
+{% endblock %}

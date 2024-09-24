@@ -1,0 +1,37 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+    {% if current_user.is_authenticated %}
+        <h1>Welcome, {{ current_user.username }}!</h1>
+        {% if devices %}
+        <h2>Your Devices</h2>
+        <ul class="list-group">
+            {% for device in devices %}
+                <li class="list-group-item">
+                    <a href="{{ url_for('device_details', device_id=device.id) }}">{{ device.shown_name }}</a>
+                </li>
+            {% endfor %}
+            <li class="list-group-item">
+                <a href="{{ url_for('add_device') }}">+ Add Device</a><br>
+            </li>
+        </ul>
+    {% else %}
+        <p>You have no devices: <a href="{{ url_for('add_device') }}">add a device now</a></p>
+    {% endif %}
+    {% else %}
+        <h1>Welcome to the Spencer App</h1>
+        <p>Please log in or register to see your devices</p>
+        <ul class="list-group">
+            <li class="list-group-item">
+                <a href="{{ url_for('login') }}">Login</a><br>
+            </li>
+            <li class="list-group-item">
+                <a href="{{ url_for('register') }}">Register</a><br>
+            </li>
+        </ul>
+    {% endif %}
+
+{% endblock %}

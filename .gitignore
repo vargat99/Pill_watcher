@@ -1,0 +1,4 @@
+
+*.pyc
+Frontend/my_secrets.py
+API/my_secrets.py
